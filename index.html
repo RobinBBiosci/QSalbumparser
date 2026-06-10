@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QuickStatements Album & Track Parser</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f6f5f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: rgba(0,0,0,0.12);
+    --border2: rgba(0,0,0,0.22);
+    --text: #1a1a18;
+    --text2: #5a5955;
+    --text3: #999895;
+    --accent: #1a5ea8;
+    --accent-bg: #e8f0fb;
+    --success: #1a6b3a;
+    --danger: #a82020;
+    --danger-bg: #faeaea;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --mono: 'Courier New', Courier, monospace;
+    --sans: system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .page { max-width: 800px; margin: 0 auto; }
+
+  header { margin-bottom: 2rem; }
+  header h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 4px; }
+  header p { font-size: 13px; color: var(--text2); }
+  header a { color: var(--accent); text-decoration: none; }
+  header a:hover { text-decoration: underline; }
+
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--text3);
+    margin-bottom: 1rem;
+  }
+
+  .badge {
+    font-size: 11px;
+    font-family: var(--mono);
+    background: var(--surface2);
+    border: 0.5px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 7px;
+    color: var(--text3);
+    margin-left: 6px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 170px 1fr;
+    gap: 10px;
+    align-items: start;
+    margin-bottom: 12px;
+  }
+  .field-row:last-child { margin-bottom: 0; }
+  .field-label { font-size: 13px; color: var(--text2); padding-top: 7px; }
+  .field-hint { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+  input[type="text"], select, textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: var(--sans);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input[type="text"]:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px rgba(26,94,168,0.08);
+  }
+  .mono { font-family: var(--mono) !important; font-size: 12px !important; }
+  textarea { resize: vertical; line-height: 1.5; }
+
+  .btn {
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 8px 16px;
+    font-size: 13px;
+    font-family: var(--sans);
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--surface);
+    color: var(--text);
+    transition: background 0.12s, transform 0.08s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--surface2); }
+  .btn:active { transform: scale(0.98); }
+  .btn-accent { background: var(--accent-bg); border-color: rgba(26,94,168,0.3); color: var(--accent); }
+  .btn-accent:hover { background: #d8e9f8; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #164e90; }
+  .btn-danger { color: var(--danger); border-color: rgba(168,32,32,0.25); background: var(--surface); }
+  .btn-danger:hover { background: var(--danger-bg); }
+
+  .status { font-size: 12px; margin-top: 8px; min-height: 18px; color: var(--text2); }
+  .status.err { color: var(--danger); }
+  .status.ok { color: var(--success); }
+
+  .steps { display: flex; gap: 0; margin-bottom: 1.5rem; }
+  .step-btn {
+    flex: 1; padding: 10px 8px; font-size: 12px; font-weight: 600;
+    border: 0.5px solid var(--border2); background: var(--surface2);
+    color: var(--text3); cursor: pointer; transition: all 0.12s; text-align: center;
+  }
+  .step-btn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+  .step-btn:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+  .step-btn:not(:first-child) { border-left: none; }
+  .step-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .step-btn:not(.active):hover { background: var(--surface); color: var(--text2); }
+
+  .step-panel { display: none; }
+  .step-panel.visible { display: block; }
+
+  .callout {
+    background: var(--accent-bg);
+    border: 0.5px solid rgba(26,94,168,0.2);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text2);
+    margin-bottom: 1rem;
+    line-height: 1.7;
+  }
+  .callout strong { color: var(--text); font-weight: 600; }
+  .callout code { font-family: var(--mono); font-size: 12px; background: rgba(26,94,168,0.1); padding: 1px 5px; border-radius: 3px; }
+
+  .track-header {
+    display: grid;
+    grid-template-columns: 95px 1fr 72px 32px;
+    gap: 8px; padding-bottom: 6px; margin-bottom: 6px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .track-header span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); font-weight: 600; }
+
+  .track-row { display: grid; grid-template-columns: 95px 1fr 72px 32px; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .secs-cell {
+    font-size: 12px; font-family: var(--mono); color: var(--text3);
+    background: var(--surface2); border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 7px 8px; text-align: right;
+  }
+  .del-btn { width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .tracks-empty { font-size: 13px; color: var(--text3); text-align: center; padding: 1.5rem 0; }
+  .track-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+
+  .output-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .output-pre {
+    background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-sm);
+    padding: 1rem; font-family: var(--mono); font-size: 12px; white-space: pre;
+    overflow-x: auto; line-height: 1.7; min-height: 60px; color: var(--text);
+  }
+  .output-pre.placeholder { color: var(--text3); }
+
+  .action-bar { display: flex; gap: 8px; margin: 0.5rem 0 1rem; flex-wrap: wrap; }
+
+
+  .source-tab {
+    flex: 1; padding: 9px 16px; font-size: 13px; font-weight: 600;
+    border: 0.5px solid var(--border2); background: var(--surface2);
+    color: var(--text3); cursor: pointer; transition: all 0.12s; text-align: center;
+  }
+  #tab-discogs.active {
+    background-color: #121212 !important;
+    color: #ffffff !important;
+  }
+  #tab-bandcamp.active {
+    background-color: #0cacd7 !important;
+    color: #ffffff !important;
+  }
+  .source-tab:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+  .source-tab:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; border-left: none; }
+
+  .source-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .source-tab:not(.active):hover { background: var(--surface); color: var(--text2); }
+
+  @media (max-width: 540px) {
+    .field-row { grid-template-columns: 1fr; }
+    .field-label { padding-top: 0; }
+    .track-header, .track-row { grid-template-columns: 80px 1fr 60px 28px; }
+  }
+  /* FAQ Modal Styles */
+  #faqModal {
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 0;
+    width: 85%;
+    max-width: 800px;
+    margin: auto;
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  }
+  #faqModal::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+  }
+  .modal-header {
+    padding: 1rem 1.5rem;
+    background: var(--surface2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .modal-body {
+    padding: 2rem;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .btn-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--text3);
+  }
+  .btn-close:hover { color: var(--danger); }
+
+  /* Genre reference modal */
+  .genre-modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .genre-modal-overlay.open { display: flex; }
+  .genre-modal {
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    width: min(520px, 92vw);
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  }
+  .genre-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.85rem;
+    flex-shrink: 0;
+  }
+  .genre-modal-title {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.09em; color: var(--text3);
+  }
+  .genre-modal-close {
+    background: none; border: none; cursor: pointer;
+    font-size: 18px; color: var(--text2); line-height: 1;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .genre-modal-close:hover { background: var(--surface2); }
+  .genre-modal-body { overflow-y: auto; flex: 1; }
+  .genre-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .genre-table th {
+    text-align: left; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--text3); padding: 0 8px 8px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .genre-table td {
+    padding: 7px 8px;
+    border-bottom: 0.5px solid var(--border);
+    vertical-align: middle;
+  }
+  .genre-table tr:last-child td { border-bottom: none; }
+  .genre-table tr:hover td { background: var(--surface2); }
+  .genre-table td:first-child { color: var(--text); }
+  .genre-table td:last-child { font-family: var(--mono); font-size: 12px; }
+  .genre-table a { color: var(--accent); text-decoration: none; }
+  .genre-table a:hover { text-decoration: underline; }
+  .btn-sm-link {
+    background: none; border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text2);
+    cursor: pointer; font-size: 11px; padding: 3px 8px;
+    font-family: var(--sans);
+  }
+  .btn-sm-link:hover { background: var(--surface2); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>QuickStatements Album & Track Parser</h1>
+    <p>Build <a href="https://qs-dev.toolforge.org/" target="_blank">QuickStatements 3.0</a> V1 commands for <a href="https://www.wikidata.org/wiki/Wikidata:Main_Page">Wikidata</a> album & audio track items, populated from <a href="https://www.discogs.com/">Discogs</a> or <a href="https://bandcamp.com/">Bandcamp</a> entries.</p>
+    <button id="openFAQ" class="btn" style="margin-top: 10px; font-size: 11px; padding: 4px 10px;">Read Me</button>
+  </header>
+
+  <dialog id="faqModal">
+  <div class="modal-header">
+    <h2 style="font-size: 16px;">Read Me</h2>
+    <button id="closeFAQ" class="btn-close">&times;</button>
+  </div>
+  <div class="modal-body">
+    <p>This is a simple tool to produce QuickStatements 3.0-friendly V1 commands to create new Wikidata items for audio tracks of musical albums, add those tracks as a tracklist for the album's Wikidata item, and add additional album information. You can add tracks based on an album's Discogs page, Bandcamp page, or manually.<br><br>
+    Tracks will have shared properties: Description in English, instance of (P31), performer (P175), and title (P1476) language.<br><br>
+    Tracks will have unique properties: Label in English, title (P1476), and duration (P2047) in seconds.<br><br>
+    When adding tracks to an album's tracklist property (P658), tracks will be given the qualifiers of series ordinal (P1545) in the order in which they are listed and duration (P2047) in seconds.</p><br>
+    <div class="callout">
+      <strong>Before You Begin:</strong><br>
+       <ul style="margin-left: 30px;"><li>Be familiar with <a href="https://www.wikidata.org/wiki/Wikidata:Introduction">Wikidata's</a> policies and editing guidelines.</li>
+        <li>Identify or create Wikidata items for the album of interest and its artist/band/performers.</li>
+        <li>Log in to your Wiki account and be comfortable with using QuickStatements.</li></ul>
+    </div>
+    <div class="callout">
+      <strong>Note:</strong> There is no proof-reading or checks, confirm all information is accurate before submitting to QuickStatements!<br>
+      Example item: <a href="https://www.wikidata.org/wiki/Q138664890"><i>IOWA</i> (2026 album by OHYUNG)</a><br>
+      See <a href="https://www.wikidata.org/wiki/Wikidata:WikiProject_Music/en">Wikidata:WikiProject Music</a> for data model guidelines and discussions.
+    </div>
+    <div class="callout">
+      This is a <strong>free</strong> tool created by Robin Isadora Brown as <a href="https://meta.wikimedia.org/wiki/Trans_Music_Archive">part of her work</a> with <a href="https://www.transmusicarchive.org/">Trans Music Archive</a>. If you have any questions, please visit her <a href="https://en.wikipedia.org/wiki/User:RobinIsadorable">Wikipedia User page</a>. <br>
+      <a href="https://www.wikidata.org/wiki/Q133150082"">Vibe-coded</a> with Anthropic's <a href="https://www.wikidata.org/wiki/Q118876059">Claude AI</a>.
+    </div>
+    Last updated 10 June 2026
+    <p style="font-size: 12px; color: var(--text2); margin-top: 10px;">
+      <em></em>
+    </p>
+  </div>
+</dialog>
+
+  <div class="steps">
+    <button class="step-btn active" onclick="goStep(0)">1 · Import tracks</button>
+    <button class="step-btn" onclick="goStep(1)">2 · Shared properties</button>
+    <button class="step-btn" onclick="goStep(2)">3 · Tracklist</button>
+    <button class="step-btn" onclick="goStep(3)">4 · Generate output</button>
+    <button class="step-btn" onclick="goStep(4)">5 · Tracklist command</button>
+  </div>
+
+  <!-- Step 1 -->
+  <div class="step-panel visible" id="panel-0">
+    <div class="card">
+      <div class="card-title">Source</div>
+      <div style="display:flex;gap:0;margin-bottom:1rem">
+        <button class="source-tab active" id="tab-discogs" onclick="setSource('discogs')">Discogs</button>
+        <button class="source-tab" id="tab-bandcamp" onclick="setSource('bandcamp')">Bandcamp</button>
+      </div>
+      <div id="callout-discogs" class="callout">
+        <strong>How to get the page source:</strong><br>
+        Open the Discogs release page in your browser, then press <code>Ctrl+U</code> (Windows/Linux) or <code>⌘+Option+U</code> (Mac) to open View Source. Press <code>Ctrl+A</code> to select all, <code>Ctrl+C</code> to copy, then paste it below.
+      </div>
+      <div id="callout-bandcamp" class="callout" style="display:none">
+        <strong>How to get the page source:</strong><br>
+        Open the Bandcamp album page in your browser, then press <code>Ctrl+U</code> (Windows/Linux) or <code>⌘+Option+U</code> (Mac) to open View Source. Press <code>Ctrl+A</code> to select all, <code>Ctrl+C</code> to copy, then paste it below.
+      </div>
+      <textarea id="raw-html" class="mono" style="min-height:130px" placeholder="Paste full page HTML here…"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn btn-accent" id="parse-btn" onclick="parseSource()">Parse tracklist</button>
+        <button class="btn" onclick="goStep(1)">Skip — enter tracks manually</button>
+      </div>
+      <div class="status" id="parse-status"></div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-panel" id="panel-1">
+    <div class="card">
+      <div class="card-title">Shared properties — all tracks</div>
+      <div class="field-row">
+        <div><div class="field-label">Description <span class="badge">Den</span></div></div>
+        <input type="text" id="den" placeholder="audio track by ARTIST; YEAR studio recording" />
+      </div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Instance of <span class="badge">P31</span></div>
+        </div>
+        <input type="text" id="p31" class="mono" value="" placeholder="Q7302866" />
+          <div class="field-hint"></div> 
+          <div class="field-hint"><a href="https://www.wikidata.org/wiki/Q7302866">Q7302866</a>&nbsp; = "audio track"<br>
+          <a href="https://www.wikidata.org/wiki/Q55850593">Q55850593</a> = "music track with vocals"<br>
+          <a href="https://www.wikidata.org/wiki/Q55850643">Q55850643</a> = "music track without lyrics"
+        </div>
+      </div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Performer <span class="badge">P175</span></div>
+        </div>
+        <input type="text" id="p175" class="mono" placeholder="Q..." />
+      </div>
+      <div class="field-row">
+        <div><div class="field-label">Title language <span class="badge">P1476</span></div></div>
+        <select id="lang" style="width:auto;min-width:140px">
+          <option value="en">en — English</option>
+          <option value="fr">fr — French</option>
+          <option value="de">de — German</option>
+          <option value="es">es — Spanish</option>
+          <option value="pt">pt — Portuguese</option>
+          <option value="it">it — Italian</option>
+          <option value="ja">ja — Japanese</option>
+          <option value="ko">ko — Korean</option>
+          <option value="zh">zh — Chinese</option>
+          <option value="ru">ru — Russian</option>
+          <option value="nl">nl — Dutch</option>
+          <option value="pl">pl — Polish</option>
+          <option value="sv">sv — Swedish</option>
+          <option value="ar">ar — Arabic</option>
+        </select>
+      </div>
+      <div style="margin-top:1rem">
+        <button class="btn btn-primary" onclick="goStep(2)">Next: tracklist →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-panel" id="panel-2">
+    <div class="card">
+      <div class="card-title">Tracklist</div>
+      <div class="track-header">
+        <span>Duration (MM:SS)</span>
+        <span>Title</span>
+        <span style="text-align:right">Seconds</span>
+        <span></span>
+      </div>
+      <div id="tracks-container"></div>
+      <div class="tracks-empty" id="tracks-empty">No tracks yet.</div>
+      <div class="track-actions">
+        <button class="btn" onclick="addTrack()">+ Add track</button>
+        <button class="btn btn-danger" onclick="clearTracks()" style="margin-left:auto">Clear all</button>
+      </div>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-primary" onclick="goStep(3)">Next: generate →</button>
+      <button class="btn" onclick="goStep(1)">← Back</button>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step-panel" id="panel-3">
+    <div class="card">
+      <div class="card-title">Review</div>
+      <div id="review-props" style="font-size:13px;font-family:var(--mono);color:var(--text2);line-height:2.2"></div>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-primary" onclick="generate()">Generate QuickStatements</button>
+      <button class="btn" onclick="goStep(2)">← Edit tracks</button>
+      <button class="btn btn-danger" onclick="resetAll()" style="margin-left:auto">Reset all</button>
+    </div>
+    <div class="card">
+      <div class="output-header">
+        <div class="card-title" style="margin:0">Output <span class="badge">V1 · TSV</span></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="downloadTSV()">Download .tsv</button>
+          <button class="btn btn-accent" id="copy-btn" onclick="copyOutput()">Copy</button>
+        </div>
+      </div>
+      <div class="output-pre placeholder" id="output">— click Generate above —</div>
+      <div class="status" id="gen-status"></div>
+    </div>
+  </div>
+
+  <!-- Step 5: Tracklist command -->
+  <div class="step-panel" id="panel-4">
+    <div class="card">
+      <div class="card-title">Album entity</div>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Album <span class="badge">subject</span></div>
+          <div class="field-hint">Qid of page to add tracklist</div>
+        </div>
+        <input type="text" id="tl-album" class="mono" placeholder="Q..." />
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">QuickStatements CSV report</div>
+      <div class="callout">
+        <strong>How to get the CSV report:</strong><br>
+        After running your batch in <a href="https://qs-dev.toolforge.org/" target="_blank">QuickStatements 3.0</a>, open the batch results page and click <strong>Download CSV report</strong>. Then open the downloaded <code>.csv</code> file in a text editor, select all, copy, and paste below or upload the CSV file using button below.
+      </div>
+      <textarea id="tl-csv" class="mono" style="min-height:160px" placeholder="Paste CSV report contents here…"></textarea>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <label class="btn" style="cursor:pointer">
+          Upload CSV file
+          <input type="file" accept=".csv,text/csv" style="display:none" onchange="loadCSVFile(this)" />
+        </label>
+        <button class="btn btn-accent" onclick="parseTracklistCSV()">Parse CSV</button>
+      </div>
+      <div class="status" id="tl-parse-status"></div>
+    </div>
+
+    <div class="card" id="tl-preview-card" style="display:none">
+      <div class="card-title">Parsed tracks — review</div>
+      <div class="track-header" style="grid-template-columns:90px 1fr 70px 32px">
+        <span>Qid</span><span>Title</span><span style="text-align:right">Seconds</span><span></span>
+      </div>
+      <div id="tl-tracks-container"></div>
+      <div class="tracks-empty" id="tl-tracks-empty">No tracks parsed yet.</div>
+    </div>
+
+    <div class="card" id="tl-album-props-card">
+      <div class="card-title">Album properties <span class="badge">optional</span></div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:1rem">These statements will be appended to the output, one row each, using the album Qid as subject. Leave blank to omit.</p>
+
+      <div class="field-row">
+        <div><div class="field-label">Album type<span class="badge">P7937</span></div></div>
+        <input type="text" id="ap-p7937" class="mono" placeholder="Q…" />
+        <div class="field-hint"> </div>
+        <div class="field-hint">
+          <a href="https://www.wikidata.org/wiki/Q208569">Q208569</a>&nbsp;= "studio album"<br>
+          <a href="https://www.wikidata.org/wiki/Q209939">Q209939</a>&nbsp;= "live album"<br>
+          <a href="https://www.wikidata.org/wiki/Q222910">Q222910</a>&nbsp;= "compilation album"
+        </div>
+      </div>
+
+      <div class="field-row" id="ap-p136-wrapper">
+        <div><div class="field-label">Genre <span class="badge">P136</span></div></div>
+        <div>
+          <div id="ap-p136-rows">
+            <div class="ap-multi-row" style="display:flex;gap:6px;margin-bottom:6px">
+              <input type="text" class="mono ap-p136-val" placeholder="Q…" style="flex:1" />
+              <button class="btn btn-danger del-btn" onclick="removeMultiRow(this,'ap-p136-rows','ap-p136-val')" title="Remove" style="display:none">×</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:2px;flex-wrap:wrap;align-items:center">
+            <button class="btn" style="font-size:12px;padding:4px 10px" onclick="addMultiRow('ap-p136-rows','ap-p136-val')">+ add genre</button>
+            <button class="btn-sm-link" onclick="openGenreModal()">list of common genres</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div><div class="field-label">Publication date <span class="badge">P577</span></div><div class="field-hint"></div></div>
+        <input type="text" id="ap-p577" class="mono" placeholder="+YYYY-MM-DDT00:00:00Z/11" />
+      </div>
+
+      <div class="field-row">
+        <div><div class="field-label">Record label <span class="badge">P264</span></div></div>
+        <input type="text" id="ap-p264" class="mono" placeholder="Q…" />
+      </div>
+
+      <div class="field-row">
+        <div><div class="field-label">Distributed by <span class="badge">P750</span></div><div class="field-hint">prefilled from Bandcamp source</div></div>
+        <input type="text" id="ap-p750" class="mono" placeholder="Q…" />
+      </div>
+
+      <div class="field-row">
+        <div><div class="field-label">Number of parts <span class="badge">P2635</span></div><div class="field-hint">prefilled from track count</div></div>
+        <input type="text" id="ap-p2635" class="mono" placeholder="e.g. 9U7302866" />
+      </div>
+
+      <div class="field-row">
+        <div><div class="field-label">Duration <span class="badge">P2047</span></div><div class="field-hint">prefilled from total seconds</div></div>
+        <input type="text" id="ap-p2047" class="mono" placeholder="e.g. 1800U11574" />
+      </div>
+
+      <div class="field-row" id="ap-p437-wrapper">
+        <div><div class="field-label">Distribution format <span class="badge">P437</span></div><div class="field-hint"></div></div>
+        <div>
+          <div id="ap-p437-rows">
+            <div class="ap-multi-row" style="display:flex;gap:6px;margin-bottom:6px">
+              <input type="text" class="mono ap-p437-val" placeholder="Q..." style="flex:1" />
+              <button class="btn btn-danger del-btn" onclick="removeMultiRow(this,'ap-p437-rows','ap-p437-val')" title="Remove">×</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:2px;flex-wrap:wrap;align-items:center">
+            <button class="btn" style="font-size:12px;padding:4px 10px" onclick="addMultiRow('ap-p437-rows','ap-p437-val')">+ add format</button>
+            <button class="btn-sm-link" onclick="openFormatModal()">list of common formats</button>
+          </div>
+        </div>
+        <div class="field-hint"></div> 
+      </div>
+
+      <div class="field-row">
+        <div><div class="field-label">Bandcamp release ID <span class="badge">P11354</span></div><div class="field-hint">prefilled numeric ID</div></div>
+        <input type="text" id="ap-p11354" class="mono" placeholder="" />
+      </div>
+
+      <div style="border-top:0.5px solid var(--border);margin-top:1rem;padding-top:1rem">
+        <div class="card-title" style="margin-bottom:0.75rem">Additional properties</div>
+        <div id="ap-custom-rows"></div>
+        <button class="btn" style="font-size:12px;padding:4px 10px" onclick="addCustomPropRow()">+ add property</button>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn btn-primary" onclick="generateTracklist()">Generate tracklist command</button>
+    </div>
+
+    <div class="card">
+      <div class="output-header">
+        <div class="card-title" style="margin:0">Output <span class="badge">tracklist · TSV</span></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="downloadTracklist()">Download .tsv</button>
+          <button class="btn btn-accent" id="tl-copy-btn" onclick="copyTracklist()">Copy</button>
+        </div>
+      </div>
+      <div class="output-pre placeholder" id="tl-output">— parse CSV and click Generate above —</div>
+      <div class="status" id="tl-gen-status"></div>
+    </div>
+  </div>
+
+
+</div>
+<script>
+let tracks = [];
+
+function goStep(n) {
+  document.querySelectorAll('.step-panel').forEach((p, i) => p.classList.toggle('visible', i === n));
+  document.querySelectorAll('.step-btn').forEach((b, i) => b.classList.toggle('active', i === n));
+  if (n === 3) renderReview();
+  if (n === 4) prefillAlbumProps();
+}
+
+/* ── Discogs parser ── */
+
+function secsToMMSS(s) {
+  s = parseInt(s, 10);
+  return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+}
+
+function isoToMMSS(iso) {
+  if (!iso) return '';
+  if (/^\d+:\d{2}$/.test(iso.trim())) return iso.trim();
+  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!m) return '';
+  const h = parseInt(m[1]||0), min = parseInt(m[2]||0), s = parseInt(m[3]||0);
+  return `${h*60+min}:${s.toString().padStart(2,'0')}`;
+}
+
+// Get text from el after stripping all <style> and <script> children
+function cleanText(el) {
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll('style, script').forEach(n => n.remove());
+  return clone.textContent.trim();
+}
+
+function parseDiscogs() {
+  const html = document.getElementById('raw-html').value.trim();
+  if (!html) { setStatus('parse-status', 'Paste the page HTML first.', 'err'); return; }
+
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  let found = [];
+
+  // ── Strategy 1: #dsdata Apollo cache (Discogs new React site, most reliable) ──
+  // Discogs embeds its full Apollo GraphQL cache as JSON in a <script id="dsdata"> tag.
+  // Each Track object has "title" and "durationInSeconds" — clean, no CSS junk.
+  const dsdata = doc.getElementById('dsdata');
+  if (dsdata) {
+    try {
+      const cache = JSON.parse(dsdata.textContent);
+      const data = cache.data || {};
+      // Collect all Track entries from the Apollo cache (keys start with 'Track:')
+      const trackEntries = Object.entries(data)
+        .filter(([k]) => k.startsWith('Track:'))
+        .map(([, v]) => v)
+        .filter(v => v.trackType === 'TRACK' || v.title);  // exclude heading rows
+
+      if (trackEntries.length) {
+        // Sort by position if available (position is a string like "1","2","A1","B2")
+        trackEntries.sort((a, b) => {
+          const pa = String(a.position || ''), pb = String(b.position || '');
+          // numeric sort where possible, else lexicographic
+          const na = parseInt(pa), nb = parseInt(pb);
+          if (!isNaN(na) && !isNaN(nb)) return na - nb;
+          return pa.localeCompare(pb);
+        });
+        trackEntries.forEach(t => {
+          const title = (t.title || '').trim();
+          if (!title) return;
+          const dur = t.durationInSeconds != null ? secsToMMSS(t.durationInSeconds) : '';
+          found.push({ title, duration: dur });
+        });
+      }
+    } catch(e) {}
+  }
+
+  // ── Strategy 2: tr[data-track-position] rows (new Discogs React layout) ──
+  // Each row is <tr data-track-position="N">. Inside:
+  //   td.trackTitle_* contains a <span class="trackTitle_*"> with the actual title text,
+  //   followed by a credits <span> we must ignore.
+  //   td.duration_* contains a <span><span>MM:SS</span></span>.
+  if (!found.length) {
+    doc.querySelectorAll('tr[data-track-position]').forEach(row => {
+      // Find the inner trackTitle span (not the outer td which also has class trackTitle_*)
+      // The structure is: td.trackTitle_xxx > span.MuiTypography > span.trackTitle_xxx
+      const titleSpan = row.querySelector('td[class*="trackTitle"] span[class*="trackTitle"]');
+      // Duration: the innermost span inside the duration cell
+      const durCell = row.querySelector('td[class*="duration"]');
+      const durSpan = durCell ? durCell.querySelector('span > span') || durCell.querySelector('span') : null;
+
+      if (titleSpan) {
+        const title = cleanText(titleSpan);
+        const duration = durSpan ? cleanText(durSpan) : '';
+        if (title) found.push({ title, duration });
+      }
+    });
+  }
+
+  // ── Strategy 3: JSON-LD MusicAlbum tracklist ──
+  if (!found.length) {
+    for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
+      try {
+        const data = JSON.parse(script.textContent);
+        const items = Array.isArray(data) ? data : [data];
+        for (const item of items) {
+          if (Array.isArray(item.track) && item.track.length) {
+            item.track.forEach(t => found.push({
+              title: (t.name || '').trim(),
+              duration: isoToMMSS(t.duration || '')
+            }));
+          }
+        }
+      } catch(e) {}
+      if (found.length) break;
+    }
+  }
+
+  // ── Strategy 4: Classic Discogs table rows (old site) ──
+  if (!found.length) {
+    doc.querySelectorAll('tr.track, tr[class*="track_row"], tr[class*="tracklist_track"]').forEach(row => {
+      const titleEl = row.querySelector('td[class*="title"], span[class*="title"], td.title');
+      const durEl   = row.querySelector('td[class*="duration"], td.duration');
+      if (titleEl) {
+        found.push({ title: cleanText(titleEl).split('\n')[0].trim(), duration: durEl ? cleanText(durEl) : '' });
+      }
+    });
+  }
+
+  // ── Strategy 5: regex over #dsdata or other embedded JSON blobs ──
+  if (!found.length) {
+    for (const s of doc.querySelectorAll('script:not([src])')) {
+      const txt = s.textContent;
+      // Look for "title":"...","durationInSeconds":NNN patterns
+      const secMatches = [...txt.matchAll(/"title":"([^"]+)"[^}]{0,100}"durationInSeconds":(\d+)/g)];
+      if (secMatches.length) {
+        secMatches.forEach(m => found.push({ title: m[1], duration: secsToMMSS(m[2]) }));
+        break;
+      }
+      // Fallback: MM:SS patterns
+      let matches = [...txt.matchAll(/"title"\s*:\s*"([^"]+)"[^}]{0,200}?"duration"\s*:\s*"(\d+:\d{2})"/g)];
+      if (!matches.length)
+        matches = [...txt.matchAll(/"duration"\s*:\s*"(\d+:\d{2})"[^}]{0,200}?"title"\s*:\s*"([^"]+)"/g)]
+                  .map(m => [m[0], m[2], m[1]]);
+      if (matches.length) { matches.forEach(m => found.push({ title: m[1], duration: m[2] })); break; }
+    }
+  }
+
+  // ── Deduplicate and filter ──
+  const seen = new Set();
+  found = found.filter(t => {
+    const k = (t.title || '').toLowerCase().trim();
+    if (!k || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
+  if (!found.length) {
+    setStatus('parse-status', 'Could not parse tracklist automatically. Try entering tracks manually in step 3.', 'err');
+    return;
+  }
+
+  tracks = found;
+  renderTracks();
+  setStatus('parse-status', `${tracks.length} track${tracks.length !== 1 ? 's' : ''} found — continuing…`, 'ok');
+  setTimeout(() => goStep(1), 700);
+}
+
+/* ── Tracks ── */
+function mmssToSeconds(val) {
+  if (!val) return null;
+  val = val.trim();
+  if (/^\d+$/.test(val)) return parseInt(val, 10);
+  const m = val.match(/^(\d+):(\d{1,2})$/);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
+function renderTracks() {
+  const container = document.getElementById('tracks-container');
+  const empty = document.getElementById('tracks-empty');
+  container.innerHTML = '';
+  if (!tracks.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  tracks.forEach((t, i) => {
+    const secs = mmssToSeconds(t.duration);
+    const row = document.createElement('div');
+    row.className = 'track-row';
+
+    const durInput = document.createElement('input');
+    durInput.type = 'text';
+    durInput.value = t.duration;
+    durInput.placeholder = '3:45';
+    // Update the data model immediately on every keystroke so nothing is lost,
+    // but only re-render (which resets focus) when the field loses focus.
+    durInput.addEventListener('input', function() { tracks[i].duration = this.value; });
+    durInput.addEventListener('blur', function() { renderTracks(); });
+
+    const titleInput = document.createElement('input');
+    titleInput.type = 'text';
+    titleInput.value = t.title;
+    titleInput.placeholder = 'Track title';
+    titleInput.addEventListener('input', function() { tracks[i].title = this.value; });
+
+    const secsCell = document.createElement('div');
+    secsCell.className = 'secs-cell';
+    secsCell.textContent = secs != null ? secs : '—';
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn btn-danger del-btn';
+    delBtn.title = 'Remove';
+    delBtn.textContent = '×';
+    delBtn.addEventListener('click', function() { tracks.splice(i, 1); renderTracks(); });
+
+    row.appendChild(durInput);
+    row.appendChild(titleInput);
+    row.appendChild(secsCell);
+    row.appendChild(delBtn);
+    container.appendChild(row);
+  });
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function addTrack() { tracks.push({title:'',duration:''}); renderTracks(); }
+function clearTracks() { tracks=[]; renderTracks(); }
+
+/* ── Review ── */
+function renderReview() {
+  const den=document.getElementById('den').value.trim();
+  const p31=document.getElementById('p31').value.trim();
+  const p175=document.getElementById('p175').value.trim();
+  const lang=document.getElementById('lang').value;
+  const na = '<em style="color:var(--text3)">not set</em>';
+  document.getElementById('review-props').innerHTML =
+    `<span style="color:var(--text3)">Den &nbsp; </span>${den?esc(den):na}<br>` +
+    `<span style="color:var(--text3)">P31 &nbsp; </span>${p31?esc(p31):na}<br>` +
+    `<span style="color:var(--text3)">P175 &nbsp;</span>${p175?esc(p175):na}<br>` +
+    `<span style="color:var(--text3)">lang &nbsp; </span>${lang}<br>` +
+    `<span style="color:var(--text3)">tracks </span>${tracks.length}`;
+}
+
+/* ── Generate ── */
+function generate() {
+  const den=document.getElementById('den').value.trim();
+  const p31=document.getElementById('p31').value.trim();
+  const p175=document.getElementById('p175').value.trim();
+  const lang=document.getElementById('lang').value;
+
+  if (!den||!p31||!p175) { setStatus('gen-status','Den, P31, and P175 are required — go back to step 2.','err'); return; }
+  if (!tracks.length)    { setStatus('gen-status','No tracks — go back to step 3.','err'); return; }
+
+  const lines=[], errors=[];
+  tracks.forEach((t,i) => {
+    const title=(t.title||'').trim();
+    const secs=mmssToSeconds(t.duration);
+    if (!title) { errors.push(`Track ${i+1}: missing title`); return; }
+    if (secs==null) { errors.push(`Track ${i+1} "${title}": invalid duration "${t.duration}"`); return; }
+    lines.push('CREATE\t\t');
+    lines.push(`LAST\tLen\t"${title}"`);
+    lines.push(`LAST\tDen\t"${den}"`);
+    lines.push(`LAST\tP31\t${p31}`);
+    lines.push(`LAST\tP1476\t${lang}:"${title}"`);
+    lines.push(`LAST\tP175\t${p175}`);
+    lines.push(`LAST\tP2047\t${secs}U11574`);
+  });
+
+  const good=tracks.filter(t=>(t.title||'').trim()&&mmssToSeconds(t.duration)!=null).length;
+  if (errors.length) setStatus('gen-status', errors.join(' · '), 'err');
+  else setStatus('gen-status', `${good} track${good!==1?'s':''} · ${lines.length} lines ready.`, 'ok');
+
+  const el=document.getElementById('output');
+  el.textContent = lines.join('\n') || '— no valid tracks —';
+  el.className = 'output-pre' + (lines.length ? '' : ' placeholder');
+}
+
+function copyOutput() {
+  const el=document.getElementById('output');
+  if (el.classList.contains('placeholder')) return;
+  navigator.clipboard.writeText(el.textContent).then(()=>{
+    const btn=document.getElementById('copy-btn');
+    btn.textContent='Copied!';
+    setTimeout(()=>btn.textContent='Copy',1500);
+  });
+}
+
+function downloadTSV() {
+  const el=document.getElementById('output');
+  if (el.classList.contains('placeholder')) return;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([el.textContent],{type:'text/tab-separated-values'}));
+  a.download='quickstatements.tsv'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function setStatus(id,msg,cls) {
+  const el=document.getElementById(id);
+  el.textContent=msg; el.className='status'+(cls?' '+cls:'');
+}
+
+function resetAll() {
+  tracks=[];
+  ['den','p31','p175','raw-html'].forEach(id=>document.getElementById(id).value=id==='p31'?'Q7302866':'');
+  document.getElementById('lang').value='en';
+  const out=document.getElementById('output');
+  out.textContent='— click Generate above —'; out.className='output-pre placeholder';
+  setStatus('gen-status','',''); setStatus('parse-status','','');
+  renderTracks(); goStep(0);
+}
+
+let currentSource = 'discogs';
+
+function setSource(src) {
+  currentSource = src;
+  document.getElementById('tab-discogs').classList.toggle('active', src === 'discogs');
+  document.getElementById('tab-bandcamp').classList.toggle('active', src === 'bandcamp');
+  document.getElementById('callout-discogs').style.display = src === 'discogs' ? '' : 'none';
+  document.getElementById('callout-bandcamp').style.display = src === 'bandcamp' ? '' : 'none';
+}
+
+function parseSource() {
+  if (currentSource === 'bandcamp') parseBandcamp();
+  else parseDiscogs();
+}
+
+/* ── Bandcamp parser ── */
+function parseBandcamp() {
+  const html = document.getElementById('raw-html').value.trim();
+  if (!html) { setStatus('parse-status', 'Paste the page HTML first.', 'err'); return; }
+
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  let found = [];
+
+  // Strategy 1: tr.track_row_view rendered table — use the DISPLAYED MM:SS, which is
+  // the ground truth (Bandcamp truncates float seconds, so displayed time != rounded float).
+  doc.querySelectorAll('tr.track_row_view').forEach(row => {
+    const titleEl = row.querySelector('span.track-title');
+    const timeEl  = row.querySelector('span.time');
+    if (titleEl && titleEl.textContent.trim()) {
+      found.push({
+        title:    titleEl.textContent.trim(),
+        duration: timeEl ? timeEl.textContent.trim() : ''
+      });
+    }
+  });
+
+  // Strategy 2: JSON-LD MusicAlbum itemListElement (ISO 8601 durations like P00H04M17S)
+  // Used when the rendered table isn't present (e.g. server-side-only pages).
+  if (!found.length) {
+    for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
+      try {
+        const data = JSON.parse(script.textContent);
+        const items = Array.isArray(data) ? data : [data];
+        for (const item of items) {
+          const trackList = item.track?.itemListElement;
+          if (Array.isArray(trackList) && trackList.length) {
+            trackList.sort((a, b) => (a.position || 0) - (b.position || 0));
+            trackList.forEach(entry => {
+              const t = entry.item || entry;
+              const title = (t.name || '').trim();
+              if (!title) return;
+              found.push({ title, duration: isoToMMSS(t.duration || '') });
+            });
+          }
+        }
+      } catch(e) {}
+      if (found.length) break;
+    }
+  }
+
+  // Strategy 3: data-tralbum JSON — last resort; uses float seconds so may be off by 1s.
+  if (!found.length) {
+    const tralbumEl = doc.querySelector('[data-tralbum]');
+    if (tralbumEl) {
+      try {
+        const data = JSON.parse(tralbumEl.getAttribute('data-tralbum'));
+        const trackinfo = data.trackinfo || [];
+        trackinfo.sort((a, b) => (a.track_num || 0) - (b.track_num || 0));
+        trackinfo.forEach(t => {
+          const title = (t.title || '').trim();
+          if (!title) return;
+          // Floor (not round) to match Bandcamp's display behaviour
+          const dur = t.duration != null ? secsToMMSS(Math.floor(t.duration)) : '';
+          found.push({ title, duration: dur });
+        });
+      } catch(e) {}
+    }
+  }
+
+  // Deduplicate
+  const seen = new Set();
+  found = found.filter(t => {
+    const k = (t.title || '').toLowerCase().trim();
+    if (!k || seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+
+  if (!found.length) {
+    setStatus('parse-status', 'Could not parse tracklist. Make sure this is a Bandcamp album page.', 'err');
+    return;
+  }
+
+  tracks = found;
+  renderTracks();
+
+  // Extract Bandcamp release ID from the raw HTML for step 5 prefill
+  const bcMeta = doc.querySelector('meta[name="bc-page-properties"]');
+  if (bcMeta) {
+    const content2 = bcMeta.getAttribute('content') || '';
+    const idMatch = content2.match(/"item_id":(\d+)/);
+    if (idMatch) window._bcItemId = idMatch[1];
+  }
+
+  setStatus('parse-status', `${tracks.length} track${tracks.length !== 1 ? 's' : ''} found — continuing…`, 'ok');
+  setTimeout(() => goStep(1), 700);
+}
+
+/* ── Tracklist command (step 5) ── */
+let tlTracks = [];
+
+/* Parse a CSV string, handling RFC 4180 quoting (double-quoted fields, "" = literal ") */
+function parseCSV(text) {
+  const rows = [];
+  // Normalise line endings
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const fields = [];
+    let i = 0;
+    while (i < line.length) {
+      if (line[i] === '"') {
+        // Quoted field
+        i++;
+        let val = '';
+        while (i < line.length) {
+          if (line[i] === '"' && line[i+1] === '"') { val += '"'; i += 2; }
+          else if (line[i] === '"') { i++; break; }
+          else { val += line[i++]; }
+        }
+        fields.push(val);
+        if (line[i] === ',') i++;
+      } else {
+        const end = line.indexOf(',', i);
+        if (end === -1) { fields.push(line.slice(i)); break; }
+        fields.push(line.slice(i, end));
+        i = end + 1;
+      }
+    }
+    rows.push(fields);
+  }
+  return rows;
+}
+
+function loadCSVFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('tl-csv').value = e.target.result;
+    parseTracklistCSV();
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function parseTracklistCSV() {
+  const text = document.getElementById('tl-csv').value.trim();
+  if (!text) { setStatus('tl-parse-status', 'Paste or upload the CSV report first.', 'err'); return; }
+
+  const rows = parseCSV(text);
+  if (!rows.length) { setStatus('tl-parse-status', 'Could not parse CSV.', 'err'); return; }
+
+  // Find column indices from header row
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const col = name => header.indexOf(name);
+  const iOp  = col('operation');
+  const iSt  = col('status');
+  const iEnt = col('entity_id');
+  const iRaw = col('raw_input');
+
+  if (iOp === -1 || iEnt === -1 || iRaw === -1) {
+    setStatus('tl-parse-status', 'CSV missing expected columns (operation, entity_id, raw_input).', 'err');
+    return;
+  }
+
+  // Group by entity_id, collecting title and duration in order of appearance
+  // We track the order items were first created to preserve track sequence
+  const itemOrder = [];
+  const itemMap = {}; // entity_id -> { title, durationSecs }
+
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    if (row.length < 3) continue;
+    const op  = (row[iOp]  || '').trim();
+    const ent = (row[iEnt] || '').trim();
+    const raw = (row[iRaw] || '').trim();
+
+    if (!ent || !/^Q\d+$/.test(ent)) continue;
+
+    if (op === 'create_item') {
+      if (!itemMap[ent]) {
+        itemMap[ent] = { title: '', durationSecs: null };
+        itemOrder.push(ent);
+      }
+    }
+
+    if (!itemMap[ent]) continue; // skip rows for entities we haven't seen created
+
+    if (op === 'set_label') {
+      // raw_input format: LAST|Len|"Title"
+      const m = raw.match(/\|Len\|"(.+)"$/);
+      if (m && !itemMap[ent].title) itemMap[ent].title = m[1];
+    }
+
+    if (op === 'set_statement') {
+      // raw_input format: LAST|P2047|258U11574
+      const m = raw.match(/\|P2047\|(\d+)U/);
+      if (m) itemMap[ent].durationSecs = parseInt(m[1], 10);
+    }
+  }
+
+  if (!itemOrder.length) {
+    setStatus('tl-parse-status', 'No created items found in CSV. Make sure this is a QuickStatements batch report.', 'err');
+    return;
+  }
+
+  tlTracks = itemOrder.map((qid, i) => ({
+    qid,
+    title: itemMap[qid].title,
+    durationSecs: itemMap[qid].durationSecs,
+    position: i + 1
+  }));
+
+  renderTlTracks();
+  prefillAlbumProps();
+  document.getElementById('tl-preview-card').style.display = '';
+  setStatus('tl-parse-status', `${tlTracks.length} track${tlTracks.length !== 1 ? 's' : ''} extracted.`, 'ok');
+}
+
+function renderTlTracks() {
+  const container = document.getElementById('tl-tracks-container');
+  const empty = document.getElementById('tl-tracks-empty');
+  container.innerHTML = '';
+  if (!tlTracks.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  tlTracks.forEach((t, i) => {
+    const row = document.createElement('div');
+    row.className = 'track-row';
+    row.style.gridTemplateColumns = '90px 1fr 70px 32px';
+    row.innerHTML = `
+      <input type="text" value="${esc(t.qid)}" class="mono" style="font-size:11px" oninput="tlTracks[${i}].qid=this.value" placeholder="Q…" />
+      <input type="text" value="${esc(t.title)}" placeholder="Track title" oninput="tlTracks[${i}].title=this.value" />
+      <div class="secs-cell">${t.durationSecs != null ? t.durationSecs : '—'}</div>
+      <button class="btn btn-danger del-btn" onclick="tlTracks.splice(${i},1);renderTlTracks()" title="Remove">×</button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+/* Generic multi-row helpers shared by Genre, Distribution format, and custom props */
+function addMultiRow(containerId, valClass, placeholder) {
+  placeholder = placeholder || 'Q…';
+  const container = document.getElementById(containerId);
+  const div = document.createElement('div');
+  div.className = 'ap-multi-row';
+  div.style.cssText = 'display:flex;gap:6px;margin-bottom:6px';
+  div.innerHTML = `<input type="text" class="mono ${valClass}" placeholder="${placeholder}" style="flex:1" />` +
+    `<button class="btn btn-danger del-btn" onclick="removeMultiRow(this,'${containerId}','${valClass}')" title="Remove">×</button>`;
+  container.appendChild(div);
+  updateMultiRemoveBtns(containerId, valClass);
+}
+
+function removeMultiRow(btn, containerId, valClass) {
+  btn.closest('.ap-multi-row').remove();
+  updateMultiRemoveBtns(containerId, valClass);
+}
+
+function updateMultiRemoveBtns(containerId, valClass) {
+  const rows = document.querySelectorAll(`#${containerId} .ap-multi-row`);
+  rows.forEach(row => {
+    const btn = row.querySelector('.del-btn');
+    if (btn) btn.style.display = rows.length > 1 ? 'flex' : 'none';
+  });
+}
+
+function addCustomPropRow() {
+  const container = document.getElementById('ap-custom-rows');
+  const div = document.createElement('div');
+  div.className = 'ap-multi-row';
+  div.style.cssText = 'display:flex;gap:6px;margin-bottom:6px;align-items:center';
+  const inp1 = document.createElement('input');
+  inp1.type = 'text'; inp1.className = 'mono ap-custom-prop';
+  inp1.placeholder = 'P…'; inp1.style.cssText = 'width:80px;flex:none';
+  const inp2 = document.createElement('input');
+  inp2.type = 'text'; inp2.className = 'mono ap-custom-val';
+  inp2.placeholder = 'Q… or value'; inp2.style.flex = '1';
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-danger del-btn'; btn.title = 'Remove'; btn.textContent = '×';
+  btn.onclick = function() { this.closest('.ap-multi-row').remove(); };
+  div.appendChild(inp1); div.appendChild(inp2); div.appendChild(btn);
+  container.appendChild(div);
+}
+
+/* Prefill album property fields after CSV parse */
+function prefillAlbumProps() {
+  // P2047: total duration in seconds
+  const totalSecs = tlTracks.reduce((sum, t) => sum + (t.durationSecs || 0), 0);
+  if (totalSecs > 0) document.getElementById('ap-p2047').value = totalSecs + 'U11574';
+
+  // P2635: number of tracks
+  const n = tlTracks.length;
+  if (n > 0) document.getElementById('ap-p2635').value = n + 'U7302866';
+
+  // P750: prefill Q545966 (Bandcamp) if Bandcamp source was used
+  if (currentSource === 'bandcamp') {
+    const p750 = document.getElementById('ap-p750');
+    if (!p750.value) p750.value = 'Q545966';
+  }
+
+  // P11354: prefill Bandcamp release ID extracted from page source
+  if (window._bcItemId) {
+    const p11354 = document.getElementById('ap-p11354');
+    if (!p11354.value) p11354.value = window._bcItemId;
+  }
+}
+
+function generateTracklist() {
+  const albumQid = document.getElementById('tl-album').value.trim();
+  if (!albumQid || !/^Q\d+$/.test(albumQid)) {
+    setStatus('tl-gen-status', 'Enter a valid album Qid (e.g. Q139377868).', 'err');
+    return;
+  }
+  // tlTracks may be empty if user only wants album property rows
+
+  const lines = [];
+  const errors = [];
+
+  // Tracklist rows
+  tlTracks.forEach((t, i) => {
+    const ordinal = t.position != null ? t.position : (i + 1);
+    if (!t.qid || !/^Q\d+$/.test(t.qid)) { errors.push(`Track ${ordinal}: missing or invalid Qid`); return; }
+    if (t.durationSecs == null) { errors.push(`Track ${ordinal} (${t.qid}): missing duration`); return; }
+    lines.push(`${albumQid}\tP658\t${t.qid}\tP1545\t"${ordinal}"\tP2047\t${t.durationSecs}U11574`);
+  });
+
+  // Album property rows — only included if non-empty
+  const v = id => document.getElementById(id).value.trim();
+
+  if (v('ap-p7937'))  lines.push(`${albumQid}\tP7937\t${v('ap-p7937')}`);
+
+  document.querySelectorAll('#ap-p136-rows .ap-p136-val').forEach(input => {
+    const val = input.value.trim();
+    if (val) lines.push(`${albumQid}\tP136\t${val}`);
+  });
+
+  if (v('ap-p577'))   lines.push(`${albumQid}\tP577\t${v('ap-p577')}`);
+  if (v('ap-p264'))   lines.push(`${albumQid}\tP264\t${v('ap-p264')}`);
+  if (v('ap-p750'))   lines.push(`${albumQid}\tP750\t${v('ap-p750')}`);
+  if (v('ap-p2635'))  lines.push(`${albumQid}\tP2635\t${v('ap-p2635')}`);
+  if (v('ap-p2047'))  lines.push(`${albumQid}\tP2047\t${v('ap-p2047')}`);
+
+  document.querySelectorAll('#ap-p437-rows .ap-p437-val').forEach(input => {
+    const val = input.value.trim();
+    if (val) lines.push(`${albumQid}\tP437\t${val}`);
+  });
+
+  if (v('ap-p11354')) lines.push(`${albumQid}\tP11354\t"${v('ap-p11354')}"`);
+
+  // Custom properties
+  document.querySelectorAll('#ap-custom-rows .ap-multi-row').forEach(row => {
+    const prop = row.querySelector('.ap-custom-prop').value.trim();
+    const val  = row.querySelector('.ap-custom-val').value.trim();
+    if (prop && val) lines.push(`${albumQid}\t${prop}\t${val}`);
+  });
+
+  if (errors.length) setStatus('tl-gen-status', errors.join(' · '), 'err');
+  else setStatus('tl-gen-status', `${lines.length} line${lines.length !== 1 ? 's' : ''} generated.`, 'ok');
+
+  const el = document.getElementById('tl-output');
+  el.textContent = lines.join('\n') || '— no valid tracks —';
+  el.className = 'output-pre' + (lines.length ? '' : ' placeholder');
+}
+
+function copyTracklist() {
+  const el = document.getElementById('tl-output');
+  if (el.classList.contains('placeholder')) return;
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    const btn = document.getElementById('tl-copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+function downloadTracklist() {
+  const el = document.getElementById('tl-output');
+  if (el.classList.contains('placeholder')) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([el.textContent], {type:'text/tab-separated-values'}));
+  a.download = 'tracklist.tsv'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+renderTracks();
+const modal = document.getElementById('faqModal');
+const openBtn = document.getElementById('openFAQ');
+const closeBtn = document.getElementById('closeFAQ');
+
+openBtn.onclick = () => modal.showModal();
+closeBtn.onclick = () => modal.close();
+
+// Close if user clicks the backdrop
+modal.addEventListener('click', (e) => {
+  const rect = modal.getBoundingClientRect();
+  if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+    modal.close();
+  }
+});
+
+function addGenreFromModal(qid) {
+  const container = document.getElementById('ap-p136-rows');
+  const inputs = container.querySelectorAll('.ap-p136-val');
+  // Find first empty input and fill it
+  for (const inp of inputs) {
+    if (!inp.value.trim()) {
+      inp.value = qid;
+      updateMultiRemoveBtns('ap-p136-rows', 'ap-p136-val');
+      return;
+    }
+  }
+  // All rows filled — add a new row with this value
+  addMultiRow('ap-p136-rows', 'ap-p136-val');
+  const newInputs = container.querySelectorAll('.ap-p136-val');
+  newInputs[newInputs.length - 1].value = qid;
+  updateMultiRemoveBtns('ap-p136-rows', 'ap-p136-val');
+}
+
+function addFormatFromModal(qid) {
+  const container = document.getElementById('ap-p437-rows');
+  const inputs = container.querySelectorAll('.ap-p437-val');
+  for (const inp of inputs) {
+    if (!inp.value.trim()) { inp.value = qid; updateMultiRemoveBtns('ap-p437-rows','ap-p437-val'); return; }
+  }
+  addMultiRow('ap-p437-rows','ap-p437-val');
+  const newInputs = container.querySelectorAll('.ap-p437-val');
+  newInputs[newInputs.length - 1].value = qid;
+  updateMultiRemoveBtns('ap-p437-rows','ap-p437-val');
+}
+
+function openFormatModal() { document.getElementById('format-modal-overlay').classList.add('open'); }
+function closeFormatModal() { document.getElementById('format-modal-overlay').classList.remove('open'); }
+
+function openGenreModal() {
+  document.getElementById('genre-modal-overlay').classList.add('open');
+}
+function closeGenreModal() {
+  document.getElementById('genre-modal-overlay').classList.remove('open');
+}
+// Close on Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { closeGenreModal(); closeFormatModal(); }
+});
+</script>
+
+<!-- Genre reference modal -->
+<div class="genre-modal-overlay" id="genre-modal-overlay" onclick="if(event.target===this)closeGenreModal()">
+  <div class="genre-modal">
+    <div class="genre-modal-header">
+      <span class="genre-modal-title">Genre reference</span>
+      <button class="genre-modal-close" onclick="closeGenreModal()" title="Close">×</button>
+    </div>
+    <div class="genre-modal-body">
+      <table class="genre-table">
+        <thead><tr><th>Genre</th><th>Qid</th><th style="width:36px"></th></tr></thead>
+        <tbody>    
+<tr><td>alternative country</td><td><a href="http://www.wikidata.org/wiki/Q438476" target="_blank">Q438476</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q438476)" title="Add Q438476">+</button></td></tr>
+<tr><td>alternative metal</td><td><a href="http://www.wikidata.org/wiki/Q20378" target="_blank">Q20378</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q20378)" title="Add Q20378">+</button></td></tr>
+<tr><td>alternative rock</td><td><a href="http://www.wikidata.org/wiki/Q11366" target="_blank">Q11366</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q11366)" title="Add Q11366">+</button></td></tr>
+<tr><td>ambient music</td><td><a href="http://www.wikidata.org/wiki/Q193207" target="_blank">Q193207</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q193207)" title="Add Q193207">+</button></td></tr>
+<tr><td>art rock</td><td><a href="http://www.wikidata.org/wiki/Q217467" target="_blank">Q217467</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q217467)" title="Add Q217467">+</button></td></tr>
+<tr><td>black metal</td><td><a href="http://www.wikidata.org/wiki/Q132438" target="_blank">Q132438</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q132438)" title="Add Q132438">+</button></td></tr>
+<tr><td>bluegrass music</td><td><a href="http://www.wikidata.org/wiki/Q213714" target="_blank">Q213714</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q213714)" title="Add Q213714">+</button></td></tr>
+<tr><td>blues</td><td><a href="http://www.wikidata.org/wiki/Q9759" target="_blank">Q9759</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q9759)" title="Add Q9759">+</button></td></tr>
+<tr><td>blues rock</td><td><a href="http://www.wikidata.org/wiki/Q193355" target="_blank">Q193355</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q193355)" title="Add Q193355">+</button></td></tr>
+<tr><td>Christian rock</td><td><a href="http://www.wikidata.org/wiki/Q753520" target="_blank">Q753520</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q753520)" title="Add Q753520">+</button></td></tr>
+<tr><td>classical music</td><td><a href="http://www.wikidata.org/wiki/Q9730" target="_blank">Q9730</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q9730)" title="Add Q9730">+</button></td></tr>
+<tr><td>contemporary Christian music</td><td><a href="http://www.wikidata.org/wiki/Q1379958" target="_blank">Q1379958</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q1379958)" title="Add Q1379958">+</button></td></tr>
+<tr><td>contemporary R&B</td><td><a href="http://www.wikidata.org/wiki/Q850412" target="_blank">Q850412</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q850412)" title="Add Q850412">+</button></td></tr>
+<tr><td>country music</td><td><a href="http://www.wikidata.org/wiki/Q83440" target="_blank">Q83440</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q83440)" title="Add Q83440">+</button></td></tr>
+<tr><td>crust punk</td><td><a href="http://www.wikidata.org/wiki/Q825769" target="_blank">Q825769</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q825769)" title="Add Q825769">+</button></td></tr>
+<tr><td>dance music</td><td><a href="http://www.wikidata.org/wiki/Q316930" target="_blank">Q316930</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q316930)" title="Add Q316930">+</button></td></tr>
+<tr><td>dance-pop</td><td><a href="http://www.wikidata.org/wiki/Q211756" target="_blank">Q211756</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q211756)" title="Add Q211756">+</button></td></tr>
+<tr><td>dark wave</td><td><a href="http://www.wikidata.org/wiki/Q3840596" target="_blank">Q3840596</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q3840596)" title="Add Q3840596">+</button></td></tr>
+<tr><td>death metal</td><td><a href="http://www.wikidata.org/wiki/Q483251" target="_blank">Q483251</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q483251)" title="Add Q483251">+</button></td></tr>
+<tr><td>disco</td><td><a href="http://www.wikidata.org/wiki/Q58339" target="_blank">Q58339</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q58339)" title="Add Q58339">+</button></td></tr>
+<tr><td>doo-wop</td><td><a href="http://www.wikidata.org/wiki/Q546359" target="_blank">Q546359</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q546359)" title="Add Q546359">+</button></td></tr>
+<tr><td>doom metal</td><td><a href="http://www.wikidata.org/wiki/Q186170" target="_blank">Q186170</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q186170)" title="Add Q186170">+</button></td></tr>
+<tr><td>dream pop</td><td><a href="http://www.wikidata.org/wiki/Q592330" target="_blank">Q592330</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q592330)" title="Add Q592330">+</button></td></tr>
+<tr><td>electro</td><td><a href="http://www.wikidata.org/wiki/Q217597" target="_blank">Q217597</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q217597)" title="Add Q217597">+</button></td></tr>
+<tr><td>electronic dance music</td><td><a href="http://www.wikidata.org/wiki/Q851213" target="_blank">Q851213</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q851213)" title="Add Q851213">+</button></td></tr>
+<tr><td>electronic music</td><td><a href="http://www.wikidata.org/wiki/Q9778" target="_blank">Q9778</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q9778)" title="Add Q9778">+</button></td></tr>
+<tr><td>electronic rock</td><td><a href="http://www.wikidata.org/wiki/Q325504" target="_blank">Q325504</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q325504)" title="Add Q325504">+</button></td></tr>
+<tr><td>electronica</td><td><a href="http://www.wikidata.org/wiki/Q817138" target="_blank">Q817138</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q817138)" title="Add Q817138">+</button></td></tr>
+<tr><td>electropop</td><td><a href="http://www.wikidata.org/wiki/Q188450" target="_blank">Q188450</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q188450)" title="Add Q188450">+</button></td></tr>
+<tr><td>emo</td><td><a href="http://www.wikidata.org/wiki/Q10926" target="_blank">Q10926</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q10926)" title="Add Q10926">+</button></td></tr>
+<tr><td>Eurodance</td><td><a href="http://www.wikidata.org/wiki/Q216961" target="_blank">Q216961</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q216961)" title="Add Q216961">+</button></td></tr>
+<tr><td>experimental music</td><td><a href="http://www.wikidata.org/wiki/Q1640319" target="_blank">Q1640319</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q1640319)" title="Add Q1640319">+</button></td></tr>
+<tr><td>experimental rock</td><td><a href="http://www.wikidata.org/wiki/Q1641839" target="_blank">Q1641839</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q1641839)" title="Add Q1641839">+</button></td></tr>
+<tr><td>folk metal</td><td><a href="http://www.wikidata.org/wiki/Q484179" target="_blank">Q484179</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q484179)" title="Add Q484179">+</button></td></tr>
+<tr><td>folk music</td><td><a href="http://www.wikidata.org/wiki/Q43343" target="_blank">Q43343</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q43343)" title="Add Q43343">+</button></td></tr>
+<tr><td>folk rock</td><td><a href="http://www.wikidata.org/wiki/Q186472" target="_blank">Q186472</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q186472)" title="Add Q186472">+</button></td></tr>
+<tr><td>funk</td><td><a href="http://www.wikidata.org/wiki/Q164444" target="_blank">Q164444</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q164444)" title="Add Q164444">+</button></td></tr>
+<tr><td>garage rock</td><td><a href="http://www.wikidata.org/wiki/Q211573" target="_blank">Q211573</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q211573)" title="Add Q211573">+</button></td></tr>
+<tr><td>glam metal</td><td><a href="http://www.wikidata.org/wiki/Q188539" target="_blank">Q188539</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q188539)" title="Add Q188539">+</button></td></tr>
+<tr><td>gothic metal</td><td><a href="http://www.wikidata.org/wiki/Q178145" target="_blank">Q178145</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q178145)" title="Add Q178145">+</button></td></tr>
+<tr><td>gothic rock</td><td><a href="http://www.wikidata.org/wiki/Q485395" target="_blank">Q485395</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q485395)" title="Add Q485395">+</button></td></tr>
+<tr><td>grindcore</td><td><a href="http://www.wikidata.org/wiki/Q188534" target="_blank">Q188534</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q188534)" title="Add Q188534">+</button></td></tr>
+<tr><td>groove metal</td><td><a href="http://www.wikidata.org/wiki/Q241662" target="_blank">Q241662</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q241662)" title="Add Q241662">+</button></td></tr>
+<tr><td>grunge</td><td><a href="http://www.wikidata.org/wiki/Q11365" target="_blank">Q11365</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q11365)" title="Add Q11365">+</button></td></tr>
+<tr><td>hard rock</td><td><a href="http://www.wikidata.org/wiki/Q83270" target="_blank">Q83270</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q83270)" title="Add Q83270">+</button></td></tr>
+<tr><td>hardcore punk</td><td><a href="http://www.wikidata.org/wiki/Q10922" target="_blank">Q10922</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q10922)" title="Add Q10922">+</button></td></tr>
+<tr><td>heavy metal music</td><td><a href="http://www.wikidata.org/wiki/Q38848" target="_blank">Q38848</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q38848)" title="Add Q38848">+</button></td></tr>
+<tr><td>hip-hop</td><td><a href="http://www.wikidata.org/wiki/Q11401" target="_blank">Q11401</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q11401)" title="Add Q11401">+</button></td></tr>
+<tr><td>house music</td><td><a href="http://www.wikidata.org/wiki/Q20502" target="_blank">Q20502</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q20502)" title="Add Q20502">+</button></td></tr>
+<tr><td>independent music</td><td><a href="http://www.wikidata.org/wiki/Q42201" target="_blank">Q42201</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q42201)" title="Add Q42201">+</button></td></tr>
+<tr><td>indie folk</td><td><a href="http://www.wikidata.org/wiki/Q1317816" target="_blank">Q1317816</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q1317816)" title="Add Q1317816">+</button></td></tr>
+<tr><td>indie pop</td><td><a href="http://www.wikidata.org/wiki/Q842324" target="_blank">Q842324</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q842324)" title="Add Q842324">+</button></td></tr>
+<tr><td>indie rock</td><td><a href="http://www.wikidata.org/wiki/Q183504" target="_blank">Q183504</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q183504)" title="Add Q183504">+</button></td></tr>
+<tr><td>industrial metal</td><td><a href="http://www.wikidata.org/wiki/Q208494" target="_blank">Q208494</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q208494)" title="Add Q208494">+</button></td></tr>
+<tr><td>industrial music</td><td><a href="http://www.wikidata.org/wiki/Q487965" target="_blank">Q487965</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q487965)" title="Add Q487965">+</button></td></tr>
+<tr><td>J-pop</td><td><a href="http://www.wikidata.org/wiki/Q131578" target="_blank">Q131578</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q131578)" title="Add Q131578">+</button></td></tr>
+<tr><td>jazz</td><td><a href="http://www.wikidata.org/wiki/Q8341" target="_blank">Q8341</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q8341)" title="Add Q8341">+</button></td></tr>
+<tr><td>jazz fusion</td><td><a href="http://www.wikidata.org/wiki/Q105527" target="_blank">Q105527</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q105527)" title="Add Q105527">+</button></td></tr>
+<tr><td>K-pop</td><td><a href="http://www.wikidata.org/wiki/Q213665" target="_blank">Q213665</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q213665)" title="Add Q213665">+</button></td></tr>
+<tr><td>melodic death metal</td><td><a href="http://www.wikidata.org/wiki/Q253918" target="_blank">Q253918</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q253918)" title="Add Q253918">+</button></td></tr>
+<tr><td>metalcore</td><td><a href="http://www.wikidata.org/wiki/Q183862" target="_blank">Q183862</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q183862)" title="Add Q183862">+</button></td></tr>
+<tr><td>narodnozabavna glasba</td><td><a href="http://www.wikidata.org/wiki/Q15975701" target="_blank">Q15975701</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q15975701)" title="Add Q15975701">+</button></td></tr>
+<tr><td>new wave</td><td><a href="http://www.wikidata.org/wiki/Q187760" target="_blank">Q187760</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q187760)" title="Add Q187760">+</button></td></tr>
+<tr><td>noise rock</td><td><a href="http://www.wikidata.org/wiki/Q181861" target="_blank">Q181861</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q181861)" title="Add Q181861">+</button></td></tr>
+<tr><td>nu metal</td><td><a href="http://www.wikidata.org/wiki/Q263734" target="_blank">Q263734</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q263734)" title="Add Q263734">+</button></td></tr>
+<tr><td>oi!</td><td><a href="http://www.wikidata.org/wiki/Q274401" target="_blank">Q274401</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q274401)" title="Add Q274401">+</button></td></tr>
+<tr><td>pop music</td><td><a href="http://www.wikidata.org/wiki/Q37073" target="_blank">Q37073</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q37073)" title="Add Q37073">+</button></td></tr>
+<tr><td>pop rock</td><td><a href="http://www.wikidata.org/wiki/Q484641" target="_blank">Q484641</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q484641)" title="Add Q484641">+</button></td></tr>
+<tr><td>pop-punk</td><td><a href="http://www.wikidata.org/wiki/Q487914" target="_blank">Q487914</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q487914)" title="Add Q487914">+</button></td></tr>
+<tr><td>popular music</td><td><a href="http://www.wikidata.org/wiki/Q373342" target="_blank">Q373342</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q373342)" title="Add Q373342">+</button></td></tr>
+<tr><td>post-grunge</td><td><a href="http://www.wikidata.org/wiki/Q379671" target="_blank">Q379671</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q379671)" title="Add Q379671">+</button></td></tr>
+<tr><td>post-hardcore</td><td><a href="http://www.wikidata.org/wiki/Q377910" target="_blank">Q377910</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q377910)" title="Add Q377910">+</button></td></tr>
+<tr><td>post-punk</td><td><a href="http://www.wikidata.org/wiki/Q598929" target="_blank">Q598929</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q598929)" title="Add Q598929">+</button></td></tr>
+<tr><td>post-rock</td><td><a href="http://www.wikidata.org/wiki/Q209137" target="_blank">Q209137</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q209137)" title="Add Q209137">+</button></td></tr>
+<tr><td>power metal</td><td><a href="http://www.wikidata.org/wiki/Q57143" target="_blank">Q57143</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q57143)" title="Add Q57143">+</button></td></tr>
+<tr><td>power pop</td><td><a href="http://www.wikidata.org/wiki/Q837837" target="_blank">Q837837</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q837837)" title="Add Q837837">+</button></td></tr>
+<tr><td>progressive metal</td><td><a href="http://www.wikidata.org/wiki/Q484344" target="_blank">Q484344</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q484344)" title="Add Q484344">+</button></td></tr>
+<tr><td>progressive rock</td><td><a href="http://www.wikidata.org/wiki/Q49451" target="_blank">Q49451</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q49451)" title="Add Q49451">+</button></td></tr>
+<tr><td>psychedelic rock</td><td><a href="http://www.wikidata.org/wiki/Q206159" target="_blank">Q206159</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q206159)" title="Add Q206159">+</button></td></tr>
+<tr><td>punk rock</td><td><a href="http://www.wikidata.org/wiki/Q3071" target="_blank">Q3071</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q3071)" title="Add Q3071">+</button></td></tr>
+<tr><td>rapping</td><td><a href="http://www.wikidata.org/wiki/Q6010" target="_blank">Q6010</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q6010)" title="Add Q6010">+</button></td></tr>
+<tr><td>reggae</td><td><a href="http://www.wikidata.org/wiki/Q9794" target="_blank">Q9794</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q9794)" title="Add Q9794">+</button></td></tr>
+<tr><td>rhythm and blues</td><td><a href="http://www.wikidata.org/wiki/Q45981" target="_blank">Q45981</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q45981)" title="Add Q45981">+</button></td></tr>
+<tr><td>rock and roll</td><td><a href="http://www.wikidata.org/wiki/Q7749" target="_blank">Q7749</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q7749)" title="Add Q7749">+</button></td></tr>
+<tr><td>rock music</td><td><a href="http://www.wikidata.org/wiki/Q11399" target="_blank">Q11399</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q11399)" title="Add Q11399">+</button></td></tr>
+<tr><td>shoegaze</td><td><a href="http://www.wikidata.org/wiki/Q272167" target="_blank">Q272167</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q272167)" title="Add Q272167">+</button></td></tr>
+<tr><td>ska</td><td><a href="http://www.wikidata.org/wiki/Q54365" target="_blank">Q54365</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q54365)" title="Add Q54365">+</button></td></tr>
+<tr><td>ska punk</td><td><a href="http://www.wikidata.org/wiki/Q460674" target="_blank">Q460674</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q460674)" title="Add Q460674">+</button></td></tr>
+<tr><td>sludge metal</td><td><a href="http://www.wikidata.org/wiki/Q720959" target="_blank">Q720959</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q720959)" title="Add Q720959">+</button></td></tr>
+<tr><td>soul</td><td><a href="http://www.wikidata.org/wiki/Q131272" target="_blank">Q131272</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q131272)" title="Add Q131272">+</button></td></tr>
+<tr><td>speed metal</td><td><a href="http://www.wikidata.org/wiki/Q211723" target="_blank">Q211723</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q211723)" title="Add Q211723">+</button></td></tr>
+<tr><td>stoner rock</td><td><a href="http://www.wikidata.org/wiki/Q617240" target="_blank">Q617240</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q617240)" title="Add Q617240">+</button></td></tr>
+<tr><td>symphonic metal</td><td><a href="http://www.wikidata.org/wiki/Q486415" target="_blank">Q486415</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q486415)" title="Add Q486415">+</button></td></tr>
+<tr><td>synth-pop</td><td><a href="http://www.wikidata.org/wiki/Q1298934" target="_blank">Q1298934</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q1298934)" title="Add Q1298934">+</button></td></tr>
+<tr><td>techno</td><td><a href="http://www.wikidata.org/wiki/Q170611" target="_blank">Q170611</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q170611)" title="Add Q170611">+</button></td></tr>
+<tr><td>thrash metal</td><td><a href="http://www.wikidata.org/wiki/Q483352" target="_blank">Q483352</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q483352)" title="Add Q483352">+</button></td></tr>
+<tr><td>traditional folk music</td><td><a href="http://www.wikidata.org/wiki/Q235858" target="_blank">Q235858</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q235858)" title="Add Q235858">+</button></td></tr>
+<tr><td>traditional heavy metal</td><td><a href="http://www.wikidata.org/wiki/Q1133657" target="_blank">Q1133657</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q1133657)" title="Add Q1133657">+</button></td></tr>
+<tr><td>trip hop</td><td><a href="http://www.wikidata.org/wiki/Q205560" target="_blank">Q205560</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q205560)" title="Add Q205560">+</button></td></tr>
+<tr><td>world music</td><td><a href="http://www.wikidata.org/wiki/Q205049" target="_blank">Q205049</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addGenreFromModal(''Q205049)" title="Add Q205049">+</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- Distribution format reference modal -->
+<div class="genre-modal-overlay" id="format-modal-overlay" onclick="if(event.target===this)closeFormatModal()">
+  <div class="genre-modal">
+    <div class="genre-modal-header">
+      <span class="genre-modal-title">Distribution format reference</span>
+      <button class="genre-modal-close" onclick="closeFormatModal()" title="Close">&times;</button>
+    </div>
+    <div class="genre-modal-body">
+      <table class="genre-table">
+        <thead><tr><th>Format</th><th>Qid</th><th style="width:36px"></th></tr></thead>
+        <tbody>
+        <tr><td>music streaming</td><td><a href="http://www.wikidata.org/wiki/Q15982450" target="_blank">Q15982450</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addFormatFromModal('Q15982450')" title="Add Q15982450">+</button></td></tr>
+        <tr><td>digital media</td><td><a href="http://www.wikidata.org/wiki/Q1076968" target="_blank">Q1076968</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addFormatFromModal('Q1076968')" title="Add Q1076968">+</button></td></tr>
+        <tr><td>music download</td><td><a href="http://www.wikidata.org/wiki/Q6473564" target="_blank">Q6473564</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addFormatFromModal('Q6473564')" title="Add Q6473564">+</button></td></tr>
+        <tr><td>12" vinyl LP</td><td><a href="http://www.wikidata.org/wiki/Q841983" target="_blank">Q841983</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addFormatFromModal('Q841983')" title="Add Q841983">+</button></td></tr>
+        <tr><td>2 x LP</td><td><a href="http://www.wikidata.org/wiki/Q58959170" target="_blank">Q58959170</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addFormatFromModal('Q58959170')" title="Add Q58959170">+</button></td></tr>
+        <tr><td>7" vinyl single</td><td><a href="http://www.wikidata.org/wiki/Q6128115" target="_blank">Q6128115</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addFormatFromModal('Q6128115')" title="Add Q6128115">+</button></td></tr>
+        <tr><td>CD</td><td><a href="http://www.wikidata.org/wiki/Q34467" target="_blank">Q34467</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addFormatFromModal('Q34467')" title="Add Q34467">+</button></td></tr>
+        <tr><td>cassette</td><td><a href="http://www.wikidata.org/wiki/Q149757" target="_blank">Q149757</a></td><td style="text-align:center"><button class="btn" style="font-size:13px;padding:2px 8px;line-height:1" onclick="addFormatFromModal('Q149757')" title="Add Q149757">+</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
