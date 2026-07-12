@@ -31,6 +31,6 @@ This is a free tool created by **Robin Isadora Brown** as [part of her work](htt
 [Vibe-coded](https://www.wikidata.org/wiki/Q133150082) with Anthropic's [Claude AI](https://www.wikidata.org/wiki/Q118876059).
 
 ## License
-[GPL-3.0 license](https://github.com/RobinBBiosci/QSalbumparser/blob/main/LICENSE)
+[GPL-3.0 license](https://github.com/RobinBBiosci/QSalbumparser/blob/main/LICENSE) for code
 
-* The Robin logo is copyrighted. I retain all rights to it and its derivations.
+The Robin logo is copyrighted. I retain all rights to it and its derivations.
