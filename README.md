@@ -15,7 +15,7 @@ This is a simple tool to produce [QuickStatements 3.0](https://qs-dev.toolforge.
 
 ## Before You Begin
 * Be familiar with [Wikidata's policies and editing guidelines](https://www.wikidata.org/wiki/Wikidata:Introduction).
-*  Identify or create Wikidata items for the album of interest and its artist/band/performers.
+* Identify or create Wikidata items for the album of interest and its artist/band/performers.
 * Log in to your Wiki account and be comfortable with using QuickStatements.
 
 ## Note
@@ -32,4 +32,5 @@ This is a free tool created by **Robin Isadora Brown** as [part of her work](htt
 
 ## License
 [GPL-3.0 license](https://github.com/RobinBBiosci/QSalbumparser/blob/main/LICENSE)
-The Robin logo is copyrighted. I retain all rights to it and its derivations.
+
+* The Robin logo is copyrighted. I retain all rights to it and its derivations.
