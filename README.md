@@ -32,3 +32,4 @@ This is a free tool created by **Robin Isadora Brown** as [part of her work](htt
 
 ## License
 [GPL-3.0 license](https://github.com/RobinBBiosci/QSalbumparser/blob/main/LICENSE)
+The Robin logo is copyrighted. I retain all rights to it and its derivations.
